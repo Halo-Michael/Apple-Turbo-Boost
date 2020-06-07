@@ -1,0 +1,13 @@
+Package: com.michael.appleilluminator
+Name: Apple Illuminator
+Depends: firmware (>= 11.0)
+Conflicts: com.michael.appleturboboost
+Architecture: iphoneos-arm
+Maintainer: Halo_Michael <yc992147156@me.com>
+Author: Halo_Michael <yc992147156@me.com>
+Section: System
+Version: 0.6.0
+Description: Illuminate your Apple!
+ Illuminate your Apple!
+ Relieve Apple’s overheating Reduces brightness limit.
+ Support iOS11~13.
