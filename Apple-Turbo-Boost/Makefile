@@ -3,7 +3,7 @@ VERSION = 0.6.4
 
 .PHONY: all clean
 
-all: clean postinst prerm
+all: clean postinst prerm postrm
 	mkdir com.michael.appleturboboost_$(VERSION)_iphoneos-arm
 	mkdir com.michael.appleturboboost_$(VERSION)_iphoneos-arm/DEBIAN
 	cp control com.michael.appleturboboost_$(VERSION)_iphoneos-arm/DEBIAN
