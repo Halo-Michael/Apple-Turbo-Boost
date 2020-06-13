@@ -1,13 +1,13 @@
 TARGET = Apple Illuminator
-VERSION = 0.6.2
+VERSION = 0.6.4
 
 .PHONY: all clean
 
-all: clean postinst prerm
+all: clean postinst prerm postrm
 	mkdir com.michael.appleilluminator_$(VERSION)_iphoneos-arm
 	mkdir com.michael.appleilluminator_$(VERSION)_iphoneos-arm/DEBIAN
 	cp control com.michael.appleilluminator_$(VERSION)_iphoneos-arm/DEBIAN
-	mv postinst/.theos/obj/postinst prerm/.theos/obj/prerm com.michael.appleilluminator_$(VERSION)_iphoneos-arm/DEBIAN
+	mv postinst/.theos/obj/postinst prerm/.theos/obj/prerm postrm/.theos/obj/postrm com.michael.appleilluminator_$(VERSION)_iphoneos-arm/DEBIAN
 	dpkg -b com.michael.appleilluminator_$(VERSION)_iphoneos-arm
 
 postinst: clean
@@ -16,5 +16,8 @@ postinst: clean
 prerm: clean
 	sh make-prerm.sh
 
+postrm: clean
+	sh make-postrm.sh
+
 clean:
-	rm -rf com.michael.appleilluminator_* postinst/.theos prerm/.theos
+	rm -rf com.michael.appleilluminator_* postinst/.theos prerm/.theos postrm/.theos

@@ -6,7 +6,7 @@ Architecture: iphoneos-arm
 Maintainer: Halo_Michael <yc992147156@me.com>
 Author: Halo_Michael <yc992147156@me.com>
 Section: System
-Version: 0.6.2
+Version: 0.6.4
 Description: Illuminate your Apple!
  Illuminate your Apple!
  Relieve Apple’s overheating Reduces brightness limit.
