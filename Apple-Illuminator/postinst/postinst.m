@@ -52,7 +52,7 @@ int main() {
     printf("Created the backup file %s.\n", [[NSString stringWithFormat:@"%@.bak", watchdogPlist] UTF8String]);
 
     NSMutableArray *BacklightBrightness = [NSMutableArray new];
-    for (int i = 0; i < 4; i++) {
+    for (int i = 0; i < [[NSDictionary dictionaryWithContentsOfFile:watchdogPlist][@"backlightComponentControl"][@"BacklightBrightness"] count]; i++) {
         [BacklightBrightness addObject:[NSDictionary dictionaryWithContentsOfFile:watchdogPlist][@"backlightComponentControl"][@"BacklightBrightness"][0]];
     }
     modifyPlist(watchdogPlist, ^(id plist) {
@@ -61,7 +61,7 @@ int main() {
 
     if ([NSDictionary dictionaryWithContentsOfFile:watchdogPlist][@"backlightComponentControl"][@"BacklightPower"] != nil) {
         NSMutableArray *BacklightPower = [NSMutableArray new];
-        for (int i = 0; i < 4; i++) {
+        for (int i = 0; i < [[NSDictionary dictionaryWithContentsOfFile:watchdogPlist][@"backlightComponentControl"][@"BacklightPower"] count]; i++) {
             [BacklightPower addObject:[NSDictionary dictionaryWithContentsOfFile:watchdogPlist][@"backlightComponentControl"][@"BacklightPower"][0]];
         }
         modifyPlist(watchdogPlist, ^(id plist) {
