@@ -126,6 +126,12 @@ int main() {
         });
     }
 
+    if ([NSDictionary dictionaryWithContentsOfFile:watchdogPlist][@"backlightComponentControl"][@"expectsCPMSSupport"] != nil) {
+        modifyPlist(watchdogPlist, ^(id plist) {
+            plist[@"backlightComponentControl"][@"expectsCPMSSupport"] = [NSNumber numberWithBool:false];
+        });
+    }
+
     if ([NSDictionary dictionaryWithContentsOfFile:watchdogPlist][@"backlightComponentControl"][@"maxThermalPower"] != nil) {
         modifyPlist(watchdogPlist, ^(id plist) {
             plist[@"backlightComponentControl"][@"minThermalPower"] = plist[@"backlightComponentControl"][@"maxThermalPower"];
