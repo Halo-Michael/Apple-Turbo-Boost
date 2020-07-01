@@ -1,4 +1,4 @@
-#include <CoreFoundation/CoreFoundation.h>
+#include <Foundation/Foundation.h>
 #include <sys/sysctl.h>
 
 int main() {
@@ -28,4 +28,3 @@ int main() {
 
     return 0;
 }
-

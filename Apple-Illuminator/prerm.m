@@ -1,4 +1,4 @@
-#include <CoreFoundation/CoreFoundation.h>
+#include <Foundation/Foundation.h>
 #include <sys/sysctl.h>
 
 int main() {

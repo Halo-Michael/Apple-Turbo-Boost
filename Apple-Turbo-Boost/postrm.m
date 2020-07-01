@@ -1,4 +1,4 @@
-#include <CoreFoundation/CoreFoundation.h>
+#include <Foundation/Foundation.h>
 
 int main() {
     char *cydia_env = getenv("CYDIA");
@@ -10,4 +10,3 @@ int main() {
     }
     return 0;
 }
-

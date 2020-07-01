@@ -1,0 +1,16 @@
+# https://travis-ci.org
+
+sudo: true
+language: objective-c
+os: osx
+osx_image: xcode11.3
+
+before_install:
+  - brew update
+  - brew install ldid dpkg xz
+  - export THEOS=/opt/theos
+  - sudo git clone --recursive https://github.com/Halo-Michael/theos.git $THEOS
+  
+script:
+  - cd Apple-Illuminator && make all
+  - cd ../Apple-Turbo-Boost && make all

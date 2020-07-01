@@ -1,4 +1,4 @@
-#include <CoreFoundation/CoreFoundation.h>
+#include <Foundation/Foundation.h>
 #include <sys/sysctl.h>
 
 bool modifyPlist(NSString *filename, void (^function)(id)) {
@@ -6,16 +6,15 @@ bool modifyPlist(NSString *filename, void (^function)(id)) {
     if (data == nil) {
         return false;
     }
-    NSPropertyListFormat format = NSPropertyListBinaryFormat_v1_0;
-    NSError *error = nil;
-    id plist = [NSPropertyListSerialization propertyListWithData:data options:NSPropertyListMutableContainersAndLeaves format:&format error:&error];
+    NSPropertyListFormat format = 0;
+    id plist = [NSPropertyListSerialization propertyListWithData:data options:NSPropertyListMutableContainersAndLeaves format:&format error:nil];
     if (plist == nil) {
         return false;
     }
     if (function) {
         function(plist);
     }
-    NSData *newData = [NSPropertyListSerialization dataWithPropertyList:plist format:format options:0 error:&error];
+    NSData *newData = [NSPropertyListSerialization dataWithPropertyList:plist format:format options:0 error:nil];
     if (newData == nil) {
         return false;
     }
