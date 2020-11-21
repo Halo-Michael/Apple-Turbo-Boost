@@ -1,32 +1,7 @@
-#include <Foundation/Foundation.h>
-#include <sys/sysctl.h>
+#import <Foundation/Foundation.h>
+#import <sys/sysctl.h>
 
-bool modifyPlist(NSString *filename, void (^function)(id)) {
-    NSData *data = [NSData dataWithContentsOfFile:filename];
-    if (data == nil) {
-        return false;
-    }
-    NSPropertyListFormat format = 0;
-    id plist = [NSPropertyListSerialization propertyListWithData:data options:NSPropertyListMutableContainersAndLeaves format:&format error:nil];
-    if (plist == nil) {
-        return false;
-    }
-    if (function) {
-        function(plist);
-    }
-    NSData *newData = [NSPropertyListSerialization dataWithPropertyList:plist format:format options:0 error:nil];
-    if (newData == nil) {
-        return false;
-    }
-    if (![data isEqual:newData]) {
-        if (![newData writeToFile:filename atomically:YES]) {
-            return false;
-        }
-    }
-    return true;
-}
-
-int main() {
+int main(){
     if (getuid() != 0) {
         printf("Run this as root!\n");
         return 1;
@@ -34,108 +9,79 @@ int main() {
 
     size_t size;
     sysctlbyname("hw.targettype", NULL, &size, NULL, 0);
-    char *machine = malloc(size);
-    sysctlbyname("hw.targettype", machine, &size, 0, 0);
+    char *machine = calloc(size, sizeof(char));
+    sysctlbyname("hw.targettype", machine, &size, NULL, 0);
 
-    NSString *watchdogPlist;
-    if (access([[NSString stringWithFormat:@"/System/Library/Watchdog/ThermalMonitor.bundle/%sAP.bundle/Info.plist", machine] UTF8String], F_OK) == 0) {
-        watchdogPlist = [NSString stringWithFormat:@"/System/Library/Watchdog/ThermalMonitor.bundle/%sAP.bundle/Info.plist", machine];
-    } else if (access([[NSString stringWithFormat:@"/System/Library/ThermalMonitor/%sAP-Info.plist", machine] UTF8String], F_OK) == 0) {
+    NSString *watchdogPlist = [NSString stringWithFormat:@"/System/Library/Watchdog/ThermalMonitor.bundle/%sAP.bundle/Info.plist", machine];
+    if (![[NSFileManager defaultManager] fileExistsAtPath:watchdogPlist]) {
         watchdogPlist = [NSString stringWithFormat:@"/System/Library/ThermalMonitor/%sAP-Info.plist", machine];
-    } else {
+    }
+    free(machine);
+    if (![[NSFileManager defaultManager] fileExistsAtPath:watchdogPlist]) {
         printf("Error: Couldn't find the WatchDog properties plist file %s.\n", [watchdogPlist UTF8String]);
         return 2;
     }
 
-    [[NSFileManager defaultManager] copyItemAtPath:watchdogPlist toPath:[NSString stringWithFormat:@"%@.bak", watchdogPlist] error:nil];
-    printf("Created the backup file %s.\n", [[NSString stringWithFormat:@"%@.bak", watchdogPlist] UTF8String]);
+    NSMutableDictionary *watchdog = [[NSMutableDictionary alloc] initWithContentsOfFile:watchdogPlist];
+    if (watchdog == nil) {
+        printf("Error: Couldn't load the WatchDog properties plist file %s.\n", [watchdogPlist UTF8String]);
+        return 2;
+    }
 
-    NSMutableDictionary *thermalMitigationLimits = [NSMutableDictionary dictionary];
-    thermalMitigationLimits[@"heavy"] = [NSDictionary dictionaryWithContentsOfFile:watchdogPlist][@"thermalMitigationLimits"][@"light"];
-    thermalMitigationLimits[@"light"] = [NSDictionary dictionaryWithContentsOfFile:watchdogPlist][@"thermalMitigationLimits"][@"light"];
-    thermalMitigationLimits[@"moderate"] = [NSDictionary dictionaryWithContentsOfFile:watchdogPlist][@"thermalMitigationLimits"][@"light"];
-    modifyPlist(watchdogPlist, ^(id plist) {
-        plist[@"thermalMitigationLimits"] = thermalMitigationLimits;
-    });
+    NSString *watchdogPlistBak = [watchdogPlist stringByAppendingString:@".bak"];
+    [[NSFileManager defaultManager] copyItemAtPath:watchdogPlist toPath:watchdogPlistBak error:nil];
+    printf("Created the backup file %s.\n", [watchdogPlistBak UTF8String]);
 
-    modifyPlist(watchdogPlist, ^(id plist) {
-        plist[@"contextualClampParams"][@"lowParamsPeakPower"] = nil;
-    });
-    modifyPlist(watchdogPlist, ^(id plist) {
-        plist[@"contextualClampParams"][@"lowParamsSpeaker"] = nil;
-    });
+    watchdog[@"thermalMitigationLimits"][@"moderate"] = watchdog[@"thermalMitigationLimits"][@"light"];
+    watchdog[@"thermalMitigationLimits"][@"heavy"] = watchdog[@"thermalMitigationLimits"][@"light"];
 
-    for (int i = 0; i < [[NSDictionary dictionaryWithContentsOfFile:watchdogPlist][@"hotspots"] count]; i++) {
-        if ([[NSDictionary dictionaryWithContentsOfFile:watchdogPlist][@"hotspots"] objectAtIndex:i][@"ForcedThermalLevelTarget0"] != nil) {
-            modifyPlist(watchdogPlist, ^(id plist) {
-                [plist[@"hotspots"] objectAtIndex:i][@"ForcedThermalLevelTarget0"] = [NSNumber numberWithInt:99];
-            });
+    watchdog[@"contextualClampParams"][@"lowParamsPeakPower"] = nil;
+    watchdog[@"contextualClampParams"][@"lowParamsSpeaker"] = nil;
+
+    for (NSUInteger i = 0; i < [watchdog[@"hotspots"] count]; i++) {
+        if (watchdog[@"hotspots"][i][@"ForcedThermalLevelTarget0"] != nil) {
+            watchdog[@"hotspots"][i][@"ForcedThermalLevelTarget0"] = [NSNumber numberWithUnsignedInteger:99];
         }
-        if ([[NSDictionary dictionaryWithContentsOfFile:watchdogPlist][@"hotspots"] objectAtIndex:i][@"ForcedThermalLevelTarget1"] != nil) {
-            modifyPlist(watchdogPlist, ^(id plist) {
-                [plist[@"hotspots"] objectAtIndex:i][@"ForcedThermalLevelTarget1"] = [NSNumber numberWithInt:99];
-            });
+        if (watchdog[@"hotspots"][i][@"ForcedThermalLevelTarget1"] != nil) {
+            watchdog[@"hotspots"][i][@"ForcedThermalLevelTarget1"] = [NSNumber numberWithUnsignedInteger:99];
         }
-        if ([[NSDictionary dictionaryWithContentsOfFile:watchdogPlist][@"hotspots"] objectAtIndex:i][@"ForcedThermalPressureLevelLightTarget"] != nil) {
-            modifyPlist(watchdogPlist, ^(id plist) {
-                [plist[@"hotspots"] objectAtIndex:i][@"ForcedThermalPressureLevelLightTarget"] = [NSNumber numberWithInt:99];
-            });
+        if (watchdog[@"hotspots"][i][@"ForcedThermalPressureLevelLightTarget"] != nil) {
+            watchdog[@"hotspots"][i][@"ForcedThermalPressureLevelLightTarget"] = [NSNumber numberWithUnsignedInteger:99];
         }
-        if ([[NSDictionary dictionaryWithContentsOfFile:watchdogPlist][@"hotspots"] objectAtIndex:i][@"THERMAL_TRAP_LOAD"] != nil) {
-            modifyPlist(watchdogPlist, ^(id plist) {
-                [plist[@"hotspots"] objectAtIndex:i][@"THERMAL_TRAP_LOAD"] = [NSNumber numberWithInt:99];
-            });
+        if (watchdog[@"hotspots"][i][@"THERMAL_TRAP_LOAD"] != nil) {
+            watchdog[@"hotspots"][i][@"THERMAL_TRAP_LOAD"] = [NSNumber numberWithUnsignedInteger:99];
         }
-        if ([[NSDictionary dictionaryWithContentsOfFile:watchdogPlist][@"hotspots"] objectAtIndex:i][@"THERMAL_TRAP_SLEEP"] != nil) {
-            modifyPlist(watchdogPlist, ^(id plist) {
-                [plist[@"hotspots"] objectAtIndex:i][@"THERMAL_TRAP_SLEEP"] = [NSNumber numberWithInt:100];
-            });
+        if (watchdog[@"hotspots"][i][@"THERMAL_TRAP_SLEEP"] != nil) {
+            watchdog[@"hotspots"][i][@"THERMAL_TRAP_SLEEP"] = [NSNumber numberWithUnsignedInteger:100];
         }
-        if ([[NSDictionary dictionaryWithContentsOfFile:watchdogPlist][@"hotspots"] objectAtIndex:i][@"target"] != nil) {
-            modifyPlist(watchdogPlist, ^(id plist) {
-                [plist[@"hotspots"] objectAtIndex:i][@"target"] = [NSNumber numberWithInt:99];
-            });
+        if (watchdog[@"hotspots"][i][@"target"] != nil) {
+            watchdog[@"hotspots"][i][@"target"] = [NSNumber numberWithUnsignedInteger:99];
         }
     }
 
-    NSMutableDictionary *lowTempMitigationLimits = [NSMutableDictionary dictionary];
-    lowTempMitigationLimits[@"heavy"] = [NSDictionary dictionaryWithContentsOfFile:watchdogPlist][@"lowTempMitigationLimits"][@"nominal"];
-    lowTempMitigationLimits[@"light"] = [NSDictionary dictionaryWithContentsOfFile:watchdogPlist][@"lowTempMitigationLimits"][@"nominal"];
-    lowTempMitigationLimits[@"moderate"] = [NSDictionary dictionaryWithContentsOfFile:watchdogPlist][@"lowTempMitigationLimits"][@"nominal"];
-    lowTempMitigationLimits[@"nominal"] = [NSDictionary dictionaryWithContentsOfFile:watchdogPlist][@"lowTempMitigationLimits"][@"nominal"];
-    modifyPlist(watchdogPlist, ^(id plist) {
-        plist[@"lowTempMitigationLimits"] = lowTempMitigationLimits;
-    });
+    watchdog[@"lowTempMitigationLimits"][@"light"] = watchdog[@"lowTempMitigationLimits"][@"nominal"];
+    watchdog[@"lowTempMitigationLimits"][@"moderate"] = watchdog[@"lowTempMitigationLimits"][@"nominal"];
+    watchdog[@"lowTempMitigationLimits"][@"heavy"] = watchdog[@"lowTempMitigationLimits"][@"nominal"];
 
-    NSMutableArray *BacklightBrightness = [NSMutableArray new];
-    for (int i = 0; i < [[NSDictionary dictionaryWithContentsOfFile:watchdogPlist][@"backlightComponentControl"][@"BacklightBrightness"] count]; i++) {
-        [BacklightBrightness addObject:[NSDictionary dictionaryWithContentsOfFile:watchdogPlist][@"backlightComponentControl"][@"BacklightBrightness"][0]];
+    for (NSUInteger i = 1; i < [watchdog[@"backlightComponentControl"][@"BacklightBrightness"] count]; i++) {
+        watchdog[@"backlightComponentControl"][@"BacklightBrightness"][i] = watchdog[@"backlightComponentControl"][@"BacklightBrightness"][0];
     }
-    modifyPlist(watchdogPlist, ^(id plist) {
-        plist[@"backlightComponentControl"][@"BacklightBrightness"] = BacklightBrightness;
-    });
 
-    if ([NSDictionary dictionaryWithContentsOfFile:watchdogPlist][@"backlightComponentControl"][@"BacklightPower"] != nil) {
-        NSMutableArray *BacklightPower = [NSMutableArray new];
-        for (int i = 0; i < [[NSDictionary dictionaryWithContentsOfFile:watchdogPlist][@"backlightComponentControl"][@"BacklightPower"] count]; i++) {
-            [BacklightPower addObject:[NSDictionary dictionaryWithContentsOfFile:watchdogPlist][@"backlightComponentControl"][@"BacklightPower"][0]];
+    if (watchdog[@"backlightComponentControl"][@"BacklightPower"] != nil) {
+        for (NSUInteger i = 1; i < [watchdog[@"backlightComponentControl"][@"BacklightPower"] count]; i++) {
+            watchdog[@"backlightComponentControl"][@"BacklightPower"][i] = watchdog[@"backlightComponentControl"][@"BacklightPower"][0];
         }
-        modifyPlist(watchdogPlist, ^(id plist) {
-            plist[@"backlightComponentControl"][@"BacklightPower"] = BacklightPower;
-        });
     }
 
-    if ([NSDictionary dictionaryWithContentsOfFile:watchdogPlist][@"backlightComponentControl"][@"expectsCPMSSupport"] != nil) {
-        modifyPlist(watchdogPlist, ^(id plist) {
-            plist[@"backlightComponentControl"][@"expectsCPMSSupport"] = [NSNumber numberWithBool:false];
-        });
+    if (watchdog[@"backlightComponentControl"][@"expectsCPMSSupport"] != nil) {
+        watchdog[@"backlightComponentControl"][@"expectsCPMSSupport"] = @NO;
     }
 
-    if ([NSDictionary dictionaryWithContentsOfFile:watchdogPlist][@"backlightComponentControl"][@"maxThermalPower"] != nil) {
-        modifyPlist(watchdogPlist, ^(id plist) {
-            plist[@"backlightComponentControl"][@"minThermalPower"] = plist[@"backlightComponentControl"][@"maxThermalPower"];
-        });
+    if (watchdog[@"backlightComponentControl"][@"maxThermalPower"] != nil) {
+        watchdog[@"backlightComponentControl"][@"minThermalPower"] = watchdog[@"backlightComponentControl"][@"maxThermalPower"];
     }
+
+    [[NSPropertyListSerialization dataWithPropertyList:watchdog format:NSPropertyListBinaryFormat_v1_0 options:0 error:nil] writeToFile:watchdogPlist atomically:YES];
 
     printf("Everything Done! You need a reboot or ldrestart to Turbo Boost your Apple!\n");
 

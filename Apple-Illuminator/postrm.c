@@ -1,4 +1,5 @@
-#include <Foundation/Foundation.h>
+#include <stdlib.h>
+#include <unistd.h>
 
 int main() {
     char *cydia_env = getenv("CYDIA");

@@ -1,5 +1,5 @@
-#include <Foundation/Foundation.h>
-#include <sys/sysctl.h>
+#import <Foundation/Foundation.h>
+#import <sys/sysctl.h>
 
 int main() {
     if (getuid() != 0) {
@@ -9,21 +9,21 @@ int main() {
 
     size_t size;
     sysctlbyname("hw.targettype", NULL, &size, NULL, 0);
-    char *machine = malloc(size);
-    sysctlbyname("hw.targettype", machine, &size, 0, 0);
+    char *machine = calloc(size, sizeof(char));
+    sysctlbyname("hw.targettype", machine, &size, NULL, 0);
 
-    NSString *watchdogPlist;
-    if (access([[NSString stringWithFormat:@"/System/Library/Watchdog/ThermalMonitor.bundle/%sAP.bundle/Info.plist.bak", machine] UTF8String], F_OK) == 0) {
-        watchdogPlist = [NSString stringWithFormat:@"/System/Library/Watchdog/ThermalMonitor.bundle/%sAP.bundle/Info.plist", machine];
-    } else if (access([[NSString stringWithFormat:@"/System/Library/ThermalMonitor/%sAP-Info.plist.bak", machine] UTF8String], F_OK) == 0) {
+    NSString *watchdogPlist = [NSString stringWithFormat:@"/System/Library/Watchdog/ThermalMonitor.bundle/%sAP.bundle/Info.plist", machine];
+    if (![[NSFileManager defaultManager] fileExistsAtPath:[watchdogPlist stringByAppendingString:@".bak"]]) {
         watchdogPlist = [NSString stringWithFormat:@"/System/Library/ThermalMonitor/%sAP-Info.plist", machine];
-    } else {
+    }
+    free(machine);
+    if (![[NSFileManager defaultManager] fileExistsAtPath:[watchdogPlist stringByAppendingString:@".bak"]]) {
         printf("Error: Couldn't find the original WatchDog properties plist file %s.\n", [watchdogPlist UTF8String]);
         return 2;
     }
 
-    remove([watchdogPlist UTF8String]);
-    [[NSFileManager defaultManager] moveItemAtPath:[NSString stringWithFormat:@"%@.bak", watchdogPlist] toPath:watchdogPlist error:nil];
+    [[NSFileManager defaultManager] removeItemAtPath:watchdogPlist error:nil];
+    [[NSFileManager defaultManager] moveItemAtPath:[watchdogPlist stringByAppendingString:@".bak"] toPath:watchdogPlist error:nil];
     printf("Restored the backup file.\n");
 
     return 0;
